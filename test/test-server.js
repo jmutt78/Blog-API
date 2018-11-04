@@ -1,95 +1,115 @@
-const chai = require('chai');
-const chaiHttp = require('chai-http');
+const chai = require("chai");
+const chaiHttp = require("chai-http");
 
-const {app, runServer, closeServer} = require('../server');
+const expect = chai.expect;
 
-const should = chai.should();
-
+const { app, runServer, closeServer } = require("../server");
 
 chai.use(chaiHttp);
 
-describe("BlogPost", function() {
+describe("Blog Posts", function() {
   before(function() {
     return runServer();
   });
-
 
   after(function() {
     return closeServer();
   });
 
-//GET test
-it('should list recipes on GET', function() {
-
-  return chai.request(app)
-    .get('/recipes')
-    .then(function(res) {
-
-      res.should.have.status(200);
-      res.should.be.json;
-      res.body.should.be.a('array');
-
-      res.body.should.have.length.of.at.least(1);
-
-      res.body.forEach(function(item) {
-        item.should.be.a('object');
-        item.should.include.keys('id', 'name', 'ingredients');
-      });
-    });
-});
-
-//POST test
-it('should add a recipe on POST', function() {
-   const newRecipe = {
-       name: 'beer', ingredients: ['barly', 'hops']};
-   return chai.request(app)
-     .post('/recipes')
-     .send(newRecipe)
-     .then(function(res) {
-       res.should.have.status(201);
-       res.should.be.json;
-       res.body.should.be.a('object');
-       res.body.should.include.keys('id', 'name', 'ingredients');
-       res.body.name.should.equal(newRecipe.name);
-       res.body.ingredients.should.be.a('array');
-       res.body.ingredients.should.include.members(newRecipe.ingredients);
-     });
- });
-
-//PUT test
- it('should update recipes on PUT', function() {
-
-    const updateData = {
-      name: 'recipe1',
-      ingredients: ['item1', 'item2']
-    };
-
-    return chai.request(app)
-
-      .get('/recipes')
+//GET
+  it("should list items on GET", function() {
+    return chai
+      .request(app)
+      .get("/blog-posts")
       .then(function(res) {
-        updateData.id = res.body[0].id;
-
-        return chai.request(app)
-          .put(`/recipes/${updateData.id}`)
-          .send(updateData)
-      })
-      .then(function(res) {
-        res.should.have.status(204);
+        expect(res).to.have.status(200);
+        expect(res).to.be.json;
+        expect(res.body).to.be.a("array");
+        expect(res.body.length).to.be.above(0);
+        res.body.forEach(function(item) {
+          expect(item).to.be.a("object");
+          expect(item).to.have.all.keys(
+            "id",
+            "title",
+            "content",
+            "author",
+            "publishDate"
+          );
+        });
       });
   });
 
-//DELETE test
-  it('should delete recipes on DELETE', function() {
-    return chai.request(app)
+//POST
+  it("should add a blog post on POST", function() {
+    const newPost = {
+      title: "Lorem ip some",
+      content: "Business article",
+      author: "Jay MUTT"
+    };
+    const expectedKeys = ["id", "publishDate"].concat(Object.keys(newPost));
 
-      .get('/recipes')
+    return chai
+      .request(app)
+      .post("/blog-posts")
+      .send(newPost)
       .then(function(res) {
-        return chai.request(app)
-          .delete(`/recipes/${res.body[0].id}`)
-      })
-      .then(function(res) {
-        res.should.have.status(204);
+        expect(res).to.have.status(201);
+        expect(res).to.be.json;
+        expect(res.body).to.be.a("object");
+        expect(res.body).to.have.all.keys(expectedKeys);
+        expect(res.body.title).to.equal(newPost.title);
+        expect(res.body.content).to.equal(newPost.content);
+        expect(res.body.author).to.equal(newPost.author);
       });
+  });
+
+  it("should error if POST missing expected values", function() {
+    const badRequestData = {};
+    return chai
+      .request(app)
+      .post("/blog-posts")
+      .send(badRequestData)
+      .then(function(res) {
+        expect(res).to.have.status(400);
+      });
+  });
+//PUT
+  it("should update blog posts on PUT", function() {
+    return (
+      chai
+        .request(app)
+        // first have to get
+        .get("/blog-posts")
+        .then(function(res) {
+          const updatedPost = Object.assign(res.body[0], {
+            title: "connect the dots",
+            content: "la la la la la"
+          });
+          return chai
+            .request(app)
+            .put(`/blog-posts/${res.body[0].id}`)
+            .send(updatedPost)
+            .then(function(res) {
+              expect(res).to.have.status(204);
+            });
+        })
+    );
+  });
+//DELETE
+  it("should delete posts on DELETE", function() {
+    return (
+      chai
+        .request(app)
+        // first have to get
+        .get("/blog-posts")
+        .then(function(res) {
+          return chai
+            .request(app)
+            .delete(`/blog-posts/${res.body[0].id}`)
+            .then(function(res) {
+              expect(res).to.have.status(204);
+            });
+        })
+    );
   });
 });
