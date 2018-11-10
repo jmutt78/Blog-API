@@ -3,62 +3,103 @@ const router = express.Router();
 
 const { BlogPosts } = require("./models");
 
+
 //first blog post article
-BlogPosts.create('Blog Post 1', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ut nulla ullamcorper, tincidunt mauris non, varius felis. Curabitur vel magna nulla. Fusce ac mauris nisi. Aenean gravida leo eu justo consequat, eleifend posuere libero faucibus. Aenean imperdiet ipsum nec risus condimentum dictum. Aliquam fermentum, libero et iaculis condimentum, dui lorem varius nulla, faucibus commodo nulla diam nec eros. ', 'Justin McIntosh');
-
-//all current blog posts
 router.get('/', (req, res) => {
-  res.json(BlogPosts.get());
+  BlogPosts
+    .find()
+    .then(posts => {
+      res.json(posts.map(post => post.serialize()));
+    })
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: 'something went terribly wrong' });
+    });
 });
 
-//POST
+router.get('/:id', (req, res) => {
+  BlogPosts
+    .findById(req.params.id)
+    .then(post => res.json(post.serialize()))
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: 'something went horribly awry' });
+    });
+});
+
 router.post('/', (req, res) => {
-//required field when making a post title, content, author
-const requiredFields = ['title', 'content', 'author'];
-for (var i = 0; i < requiredFields.length; i++) {
-const field = requiredFields[i];
-if (!(field in req.body)) {
-      const message = `Missing \`${field}\` in request body`
-      console.error(message);
-      return res.status(400).send(message);
-    }
-}
-const item = BlogPosts.create(req.body.title, req.body.content, req.body.author);
-res.status(201).json(item);
-});
-
-//PUT
-router.put('/:id', (req, res) => {
   const requiredFields = ['title', 'content', 'author'];
-  for (let i=0; i<requiredFields.length; i++) {
+  for (let i = 0; i < requiredFields.length; i++) {
     const field = requiredFields[i];
     if (!(field in req.body)) {
-      const message = `Missing \`${field}\` in request body`
+      const message = `Missing \`${field}\` in request body`;
       console.error(message);
       return res.status(400).send(message);
     }
   }
 
-  if (req.params.id !== req.body.id) {
-    const message = `Request path id (${req.params.id}) and request body id (${req.body.id}) must match`;
-    console.error(message);
-    return res.status(400).send(message);
-  }
-  console.log(`Updating Blog Post \`${req.params.id}\``);
-  BlogPosts.update({
-    id: req.params.id,
-    title: req.body.title,
-    content: req.body.content,
-    author: req.body.author
-  });
-  res.status(204).end();
+  BlogPosts
+    .create({
+      title: req.body.title,
+      content: req.body.content,
+      author: req.body.author
+    })
+    .then(blogPost => res.status(201).json(blogPost.serialize()))
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: 'Something went wrong' });
+    });
+
 });
 
-//DELETE
+
 router.delete('/:id', (req, res) => {
-  BlogPosts.delete(req.params.id);
-  console.log(`Deleted blog post \`${req.params.ID}\``);
-  res.status(204).end();
+  BlogPosts
+    .findByIdAndRemove(req.params.id)
+    .then(() => {
+      res.status(204).json({ message: 'success' });
+    })
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: 'something went terribly wrong' });
+    });
+});
+
+
+router.put('/:id', (req, res) => {
+  if (!(req.params.id && req.body.id && req.params.id === req.body.id)) {
+    res.status(400).json({
+      error: 'Request path id and request body id values must match'
+    });
+  }
+
+  const updated = {};
+  const updateableFields = ['title', 'content', 'author'];
+  updateableFields.forEach(field => {
+    if (field in req.body) {
+      updated[field] = req.body[field];
+    }
+  });
+
+  BlogPosts
+    .findByIdAndUpdate(req.params.id, { $set: updated }, { new: true })
+    .then(updatedPost => res.status(204).end())
+    .catch(err => res.status(500).json({ message: 'Something went wrong' }));
+});
+
+
+router.delete('/:id', (req, res) => {
+  BlogPosts
+    .findByIdAndRemove(req.params.id)
+    .then(() => {
+      console.log(`Deleted blog post with id \`${req.params.id}\``);
+      res.status(204).end();
+    });
+});
+
+
+router.use('*', function (req, res) {
+  res.status(404).json({ message: 'Not Found' });
 });
 
 module.exports = router;
