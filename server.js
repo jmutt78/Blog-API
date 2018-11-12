@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
 const { DATABASE_URL, PORT } = require('./config');
 const blogPostsRouter = require("./blogPostsRouter");
+const authorRouter = require("./authorRouter");
 const app = express();
 
 app.use(morgan("common"));
@@ -11,6 +12,7 @@ app.use(express.json());
 
 
 app.use("/posts", blogPostsRouter);
+app.use("/authors", authorRouter);
 
 
 let server;
